@@ -1,0 +1,127 @@
+from microbit import *
+import music
+
+# morse code characters
+morse_ctable = {
+    ".-": "A",
+    "-...": "B",
+    "-.-.": "C",
+    "-..": "D",
+    ".": "E",
+    "..-.": "F",
+    "--.": "G",
+    "....": "H",
+    "..": "I",
+    ".---": "J",
+    "-.-": "K",
+    ".-..": "L",
+    "--": "M",
+    "-.": "N",
+    "---": "O",
+    ".--.": "P",
+    "--.-": "Q",
+    ".-.": "R",
+    "...": "S",
+    "-": "T",
+    "..-": "U",
+    "...-": "V",
+    ".--": "W",
+    "-..-": "X",
+    "-.--": "Y",
+    "--..": "Z",
+    ".----": "1",
+    "..---": "2",
+    "...--": "3",
+    "....-": "4",
+    ".....": "5",
+    "-....": "6",
+    "--...": "7",
+    "---..": "8",
+    "----.": "9",
+    "-----": "0"
+}
+
+# durations are made a bit less than the desired amount
+dot_dur = 235
+dash_dur= 480
+
+# if less than 250 detect DOT
+dot_thresh = 250
+# if less than 500 detect DASH
+dash_thresh = 500
+
+buffer = ''
+message = ''
+started_to_wait = running_time()
+
+def decode(buffer):
+    # returns a question mark if morse code doesn't match any from the morse 
+    # table
+    return morse_ctable.get(buffer, '?')
+
+while True:
+    if button_a.is_pressed():
+        display.show(Image('00000:'
+                           '09990:'
+                           '09990:'
+                           '09990:'
+                           '00000'))
+        pin1.write_digital(1)
+        music.pitch(1200, duration=dot_dur, wait=True)
+        pin1.write_digital(0)
+        sleep(50) 
+        display.clear()
+    elif button_b.is_pressed():
+        display.show(Image('00000:'
+                           '99999:'
+                           '99999:'
+                           '00000:'
+                           '00000'))
+        pin1.write_digital(1)
+        music.pitch(1200, duration=dash_dur, wait=True)
+        pin1.write_digital(0)
+        sleep(50)
+        display.clear()
+    # check how long device has been waiting for signal
+    waiting = running_time() - started_to_wait
+    key_down_time = None
+    # start timing if pin2 gets input
+    while pin2.read_digital():
+        if not key_down_time:
+            key_down_time = running_time()
+    # store current time in a variable
+    key_up_time = running_time()
+    
+    # when signal detected
+    if key_down_time:
+        # check how long it was pressed
+        duration = key_up_time - key_down_time
+        if duration < dot_thresh:
+            # add dot to the buffer and show dot on the display
+            buffer += '.'
+            display.show('.')
+        elif duration < dash_thresh:
+            # add dash to the buffer and show dash on the display
+            buffer += '-'
+            display.show('-')
+        else:
+            pass
+        started_to_wait = running_time()
+        
+
+    elif len(buffer) > 0 and waiting > dash_thresh:
+        character = decode(buffer)
+        # set the buffer as empty
+        buffer = ''
+        # show decoded character
+        display.show(character)
+        # character is added to the message
+        message += character
+        
+    # to reset
+    if accelerometer.was_gesture('shake'):
+        # display message
+        print(message)
+        display.scroll(message)
+        # then reset
+        message = ''
